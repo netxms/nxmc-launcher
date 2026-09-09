@@ -1,0 +1,406 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.netxms</groupId>
+    <artifactId>nxmc-launcher</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>nxmc-launcher</name>
+    <description>Version-agnostic launcher for the NetXMS management client</description>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.release>17</maven.compiler.release>
+        <netxms-client.version>6.2.4</netxms-client.version>
+        <swt.version>3.132.0</swt.version>
+        <jackson.version>3.2.2</jackson.version>
+        <junit.version>6.1.3</junit.version>
+        <standalone.jar>${project.build.directory}/${project.artifactId}-${project.version}-standalone.jar</standalone.jar>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>${junit.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.netxms</groupId>
+            <artifactId>netxms-client</artifactId>
+            <version>${netxms-client.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>tools.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.platform</groupId>
+            <artifactId>${swt.artifactId}</artifactId>
+            <version>${swt.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.eclipse.platform</groupId>
+                    <artifactId>org.eclipse.swt</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.14.0</version>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.4</version>
+                <configuration>
+                    <excludes>
+                        <exclude>**/*IT.java</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+
+            <!-- the thin jar deliberately carries no Main-Class: running it says "no main manifest
+                 attribute" at once instead of starting and dying on a missing dependency later -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.2</version>
+            </plugin>
+
+            <!-- the standalone jar ships every supported fragment, so they are collected as files rather
+                 than as dependencies: six fragments on one compile classpath is the wart this avoids -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.8.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-swt-fragments</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/swt-fragments</outputDirectory>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>org.eclipse.platform</groupId>
+                                    <artifactId>org.eclipse.swt.gtk.linux.x86_64</artifactId>
+                                    <version>${swt.version}</version>
+                                </artifactItem>
+                                <artifactItem>
+                                    <groupId>org.eclipse.platform</groupId>
+                                    <artifactId>org.eclipse.swt.gtk.linux.aarch64</artifactId>
+                                    <version>${swt.version}</version>
+                                </artifactItem>
+                                <artifactItem>
+                                    <groupId>org.eclipse.platform</groupId>
+                                    <artifactId>org.eclipse.swt.cocoa.macosx.x86_64</artifactId>
+                                    <version>${swt.version}</version>
+                                </artifactItem>
+                                <artifactItem>
+                                    <groupId>org.eclipse.platform</groupId>
+                                    <artifactId>org.eclipse.swt.cocoa.macosx.aarch64</artifactId>
+                                    <version>${swt.version}</version>
+                                </artifactItem>
+                                <artifactItem>
+                                    <groupId>org.eclipse.platform</groupId>
+                                    <artifactId>org.eclipse.swt.win32.win32.x86_64</artifactId>
+                                    <version>${swt.version}</version>
+                                </artifactItem>
+                                <artifactItem>
+                                    <groupId>org.eclipse.platform</groupId>
+                                    <artifactId>org.eclipse.swt.win32.win32.aarch64</artifactId>
+                                    <version>${swt.version}</version>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.7.1</version>
+                <configuration>
+                    <descriptors>
+                        <descriptor>standalone-assembly.xml</descriptor>
+                    </descriptors>
+                    <archive>
+                        <manifest>
+                            <!-- no addClasspath: a Class-Path entry would let the parent loader resolve launcher
+                                 or SWT classes from jars sitting next to this one -->
+                            <mainClass>org.netxms.launcher.Bootstrap</mainClass>
+                        </manifest>
+                    </archive>
+                    <attach>false</attach>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>standalone-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- The bootstrap unpacks the one fragment os.name/os.arch name, so the build machine's own
+                 run proves nothing about the other five: a dropped artifactItem above would ship a jar
+                 that fails only on the machine that has no fragment in it. These six runs reach all six
+                 fragments, and each exits 0 without creating a Display. Declared after the assembly so it
+                 runs after it — plugins bound to the same phase run in declaration order. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.6.3</version>
+                <configuration>
+                    <executable>${java.home}/bin/java</executable>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>verify-fragment-linux-x86_64</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>
+                                <argument>-Dos.name=Linux</argument>
+                                <argument>-Dos.arch=amd64</argument>
+                                <argument>-jar</argument>
+                                <argument>${standalone.jar}</argument>
+                                <argument>-version</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>verify-fragment-linux-aarch64</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>
+                                <argument>-Dos.name=Linux</argument>
+                                <argument>-Dos.arch=aarch64</argument>
+                                <argument>-jar</argument>
+                                <argument>${standalone.jar}</argument>
+                                <argument>-version</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>verify-fragment-macos-x86_64</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>
+                                <argument>-Dos.name=Mac OS X</argument>
+                                <argument>-Dos.arch=x86_64</argument>
+                                <argument>-jar</argument>
+                                <argument>${standalone.jar}</argument>
+                                <argument>-version</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>verify-fragment-macos-aarch64</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>
+                                <argument>-Dos.name=Mac OS X</argument>
+                                <argument>-Dos.arch=aarch64</argument>
+                                <argument>-jar</argument>
+                                <argument>${standalone.jar}</argument>
+                                <argument>-version</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>verify-fragment-windows-x86_64</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>
+                                <argument>-Dos.name=Windows 11</argument>
+                                <argument>-Dos.arch=amd64</argument>
+                                <argument>-jar</argument>
+                                <argument>${standalone.jar}</argument>
+                                <argument>-version</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>verify-fragment-windows-aarch64</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>
+                                <argument>-Dos.name=Windows 11</argument>
+                                <argument>-Dos.arch=aarch64</argument>
+                                <argument>-jar</argument>
+                                <argument>${standalone.jar}</argument>
+                                <argument>-version</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>swt-linux-x86_64</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                    <name>linux</name>
+                    <arch>amd64</arch>
+                </os>
+            </activation>
+            <properties>
+                <swt.artifactId>org.eclipse.swt.gtk.linux.x86_64</swt.artifactId>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>swt-linux-aarch64</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                    <name>linux</name>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <swt.artifactId>org.eclipse.swt.gtk.linux.aarch64</swt.artifactId>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>swt-macos-x86_64</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>x86_64</arch>
+                </os>
+            </activation>
+            <properties>
+                <swt.artifactId>org.eclipse.swt.cocoa.macosx.x86_64</swt.artifactId>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>swt-macos-aarch64</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <swt.artifactId>org.eclipse.swt.cocoa.macosx.aarch64</swt.artifactId>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>swt-windows-x86_64</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                    <arch>amd64</arch>
+                </os>
+            </activation>
+            <properties>
+                <swt.artifactId>org.eclipse.swt.win32.win32.x86_64</swt.artifactId>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>swt-windows-aarch64</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <swt.artifactId>org.eclipse.swt.win32.win32.aarch64</swt.artifactId>
+            </properties>
+        </profile>
+
+        <!-- Manual runs only: mvn verify -Pintegration -Dnetxms.test.server=... -Dnetxms.test.user=... -Dnetxms.test.password=... -->
+        <profile>
+            <id>integration</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <version>3.5.4</version>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <includes>
+                                <include>**/*IT.java</include>
+                            </includes>
+                            <systemPropertyVariables>
+                                <netxms.test.server>${netxms.test.server}</netxms.test.server>
+                                <netxms.test.user>${netxms.test.user}</netxms.test.user>
+                                <netxms.test.password>${netxms.test.password}</netxms.test.password>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+            <properties>
+                <netxms.test.server/>
+                <netxms.test.user/>
+                <netxms.test.password/>
+            </properties>
+        </profile>
+    </profiles>
+</project>

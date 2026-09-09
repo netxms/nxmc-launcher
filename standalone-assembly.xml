@@ -1,0 +1,47 @@
+<assembly
+   xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2"
+   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2 http://maven.apache.org/xsd/assembly-1.1.2.xsd">
+   <id>standalone</id>
+   <formats>
+      <format>jar</format>
+   </formats>
+   <includeBaseDirectory>false</includeBaseDirectory>
+   <dependencySets>
+      <!-- the bootstrap is the only class at the jar root; Bootstrap*.class rather than
+           Bootstrap.class so a second class file javac emits cannot be silently dropped -->
+      <dependencySet>
+         <outputDirectory/>
+         <unpack>true</unpack>
+         <includes>
+            <include>org.netxms:nxmc-launcher</include>
+         </includes>
+         <unpackOptions>
+            <includes>
+               <include>org/netxms/launcher/Bootstrap*.class</include>
+            </includes>
+         </unpackOptions>
+      </dependencySet>
+      <!-- application jars stay intact: no service files to merge, signatures stay valid, and
+           URLClassLoader honours Multi-Release: true -->
+      <dependencySet>
+         <outputDirectory>BOOT-INF/core</outputDirectory>
+         <unpack>false</unpack>
+         <excludes>
+            <!-- no dot before the wildcard: the base org.eclipse.swt artifact must be covered too -->
+            <exclude>org.eclipse.platform:org.eclipse.swt*</exclude>
+         </excludes>
+      </dependencySet>
+   </dependencySets>
+   <fileSets>
+      <!-- every supported fragment, collected by maven-dependency-plugin; the version pin keeps a
+           stale copy from a rebuild without clean out of the jar -->
+      <fileSet>
+         <directory>${project.build.directory}/swt-fragments</directory>
+         <outputDirectory>BOOT-INF/swt</outputDirectory>
+         <includes>
+            <include>*-${swt.version}.jar</include>
+         </includes>
+      </fileSet>
+   </fileSets>
+</assembly>

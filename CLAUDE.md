@@ -59,8 +59,9 @@ couples the launcher to a client version, which is the problem it exists to solv
   the launcher's prompt burns a grace login that nothing downstream will mention, and
   `NO_GRACE_LOGINS` is where that path ends — which is why it is a `Kind` of its own rather than a
   `PROTOCOL_FAILURE` reported as "The connection to the server failed.". It stops rather than
-  retrying: retyping cannot fix it, and `RETRY_LOGIN`'s only effect is to focus the one field that
-  cannot help.
+  retrying: exhausted grace logins need an administrator to reset the account, so the outcome is
+  `STOPPED` and not `RETRY_LOGIN`, which selects the password for a replacement that cannot help.
+  The ordinary stopped-attempt focus still applies.
 
 **`NxcpSessionService` is the only file that touches `NXCSession`.** `LoginErrorMapper` sees
 `NXCException`/`RCC`; `ServerConnection` exposes no client types; nothing else imports
@@ -183,6 +184,24 @@ rows: the status line spanning the inner width, then Settings… and Connect.
   address adds one, forgetting one lives in `SettingsDialog`.
 - A window the user cannot resize must not change height: the status label does not wrap (full text
   in the tooltip) and no state adds or removes a widget.
+- Focus goes to the first field that still needs input: Server when blank, else Login when blank,
+  else Password. It is applied on open (after every box `open()` can raise), on a combo `Selection`
+  and on return from Settings — each time after the prefill, whose result it reads — and in
+  `finished()` for `STOPPED`, once `setBusy(false)` has re-enabled the fields, over what they hold.
+  The rule is `DisplayFormat.fieldToFocus`, which takes no password argument because Password is
+  the fallback. `startConnect`'s validation moves and `RETRY_LOGIN`'s select-and-focus are not the
+  rule: they name the field that was wrong.
+- Accepted cost of the rule: SWT raises `Selection` for every saved-list change, not only a dropdown
+  pick, so an arrow or page key on the combo changes the server and focus then leaves Server, and an
+  Enter after it presses Connect — on the stepped-to server, with whatever Login and Password then
+  hold — instead of committing a list choice. Typing in an open popup on macOS searches the list and
+  may do the same mid-word. Decided: the list is picked with the mouse. The macOS run found nothing
+  worse than this; the keyboard and popup cases were not noted one by one, so they stand as read
+  from SWT 3.132.0.
+- There is no event state telling a key from a mouse pick, and none is to be added: a `KeyDown` flag
+  consumed by the next `Selection` goes stale (GTK sends no `Selection` for Down on the last item,
+  so the next mouse pick is misread). Nor is the move wrapped in `asyncExec`; a direct `setFocus()`
+  from the selection handler showed no failure, and one that does is the evidence the wrapper needs.
 
 **The logo is four PNGs.** `logo.png` and `logo-dark.png` at 150×166, `logo@2x.png` and
 `logo-dark@2x.png` at exactly double — verbatim copies of nxmc's `login*.png`, renamed, moving as a
@@ -405,12 +424,12 @@ through `LauncherView` — never a widget. `LauncherWindow` implements `Launcher
 the display thread and holds no logic beyond dispatch.
 
 Anything worth a test that lives near the UI goes in `DisplayFormat` instead, including rules that
-are not formatting — `canPrefillLogin`, `parseAddress`, the history comparator, `isDarkColor` — or in
-`ui.DownloadEta` where it needs state across calls. The only per-attempt state the window keeps is
-that `DownloadEta`, replaced in `startConnect` because the first sample is the origin later estimates
-are measured from, and sampled inside `showDownloadProgress` so it measures the time on screen.
-Shared widget scaffolding (modal shell, OK/Cancel row, message boxes, dialog event loop) lives in
-`ui.Dialogs`, so a dialog class is only its own fields and validation.
+are not formatting — `canPrefillLogin`, `fieldToFocus`, `parseAddress`, the history comparator,
+`isDarkColor` — or in `ui.DownloadEta` where it needs state across calls. The only per-attempt state
+the window keeps is that `DownloadEta`, replaced in `startConnect` because the first sample is the
+origin later estimates are measured from, and sampled inside `showDownloadProgress` so it measures
+the time on screen. Shared widget scaffolding (modal shell, OK/Cancel row, message boxes, dialog
+event loop) lives in `ui.Dialogs`, so a dialog class is only its own fields and validation.
 
 There is exactly one `LauncherSettings` per run, created in `Launcher` and handed to both flow and
 window — a second copy would make the Settings checkbox take effect only after a restart.

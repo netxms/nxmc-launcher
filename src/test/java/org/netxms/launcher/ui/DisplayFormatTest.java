@@ -128,6 +128,21 @@ class DisplayFormatTest {
         assertFalse(DisplayFormat.canPrefillLogin("admin", ""), "nothing was pre-filled, so 'admin' was typed");
     }
 
+    @ParameterizedTest(name = "{0}")
+    @CsvSource(nullValues = "NULL", value = {
+            "nothing entered,'','',SERVER",
+            "server only,srv,'',LOGIN",
+            "server and login,srv,admin,PASSWORD",
+            "login without a server,'',admin,SERVER",
+            "blank server beside a login,'  ',admin,SERVER",
+            "blank login,srv,' \t',LOGIN",
+            "null server,NULL,admin,SERVER",
+            "null login,srv,NULL,LOGIN"
+    })
+    void focusGoesToTheFirstFieldStillNeedingInputAndPasswordIsTheFallback(String state, String server, String login, DisplayFormat.FocusField expected) {
+        assertEquals(expected, DisplayFormat.fieldToFocus(server, login), state);
+    }
+
     @ParameterizedTest
     @CsvSource({
             "0, 100, 0",

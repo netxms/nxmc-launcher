@@ -75,6 +75,7 @@ public class LauncherWindow implements LauncherView {
 
         shell.open();
         askAboutUpdateChecks();
+        focusFirstFieldNeedingInput();
         while (!shell.isDisposed()) {
             if (!display.readAndDispatch()) {
                 display.sleep();
@@ -157,6 +158,7 @@ public class LauncherWindow implements LauncherView {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 fillLoginFromSelection();
+                focusFirstFieldNeedingInput();
             }
         });
 
@@ -215,6 +217,7 @@ public class LauncherWindow implements LauncherView {
         SettingsDialog.open(shell, packages, registry, settings, manifests);
         fillServers();
         fillLoginFromSelection();
+        focusFirstFieldNeedingInput();
     }
 
     private void fillServers() {
@@ -238,6 +241,14 @@ public class LauncherWindow implements LauncherView {
         String login = selectedServer().map(entry -> DisplayFormat.lastLogin(entry.lastLogin())).orElse("");
         loginField.setText(login);
         autoFilledLogin = login;
+    }
+
+    private void focusFirstFieldNeedingInput() {
+        switch (DisplayFormat.fieldToFocus(serverCombo.getText(), loginField.getText())) {
+            case SERVER -> serverCombo.setFocus();
+            case LOGIN -> loginField.setFocus();
+            case PASSWORD -> passwordField.setFocus();
+        }
     }
 
     private Optional<ServerEntry> selectedServer() {
@@ -304,6 +315,8 @@ public class LauncherWindow implements LauncherView {
             if (outcome == ConnectFlow.Outcome.RETRY_LOGIN) {
                 passwordField.selectAll();
                 passwordField.setFocus();
+            } else if (outcome == ConnectFlow.Outcome.STOPPED) {
+                focusFirstFieldNeedingInput();
             }
         });
     }

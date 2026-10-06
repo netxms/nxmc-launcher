@@ -67,6 +67,17 @@ public final class DisplayFormat {
         return (current == null) || current.isEmpty() || current.equals(autoFilled);
     }
 
+    public static FocusField fieldToFocus(String server, String login) {
+        if (blank(server)) {
+            return FocusField.SERVER;
+        }
+        return blank(login) ? FocusField.LOGIN : FocusField.PASSWORD;
+    }
+
+    private static boolean blank(String value) {
+        return (value == null) || value.trim().isEmpty();
+    }
+
     public static AddressParse parseAddress(String text) {
         String value = (text != null) ? text.trim() : "";
         if (value.isEmpty()) {
@@ -333,6 +344,10 @@ public final class DisplayFormat {
 
     private static double round(double value) {
         return Math.round(value * 10.0) / 10.0;
+    }
+
+    public enum FocusField {
+        SERVER, LOGIN, PASSWORD
     }
 
     public enum UpdateCheckStamp {

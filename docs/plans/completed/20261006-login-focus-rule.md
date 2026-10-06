@@ -135,21 +135,23 @@ the Enter consequence above, and says why there is no event state so the flag is
 The architecture section's list of non-formatting rules in `DisplayFormat` gains the new one, and
 the `NO_GRACE_LOGINS` sentence under "Minimal command set" is rewritten as described above.
 
-- [ ] `DisplayFormat.fieldToFocus` answers Server, Login or Password by the ordered rule, blank
+- [x] `DisplayFormat.fieldToFocus` answers Server, Login or Password by the ordered rule, blank
       counting as empty
-- [ ] the window applies it on open (after every box `open()` can raise), on a combo selection and
+- [x] the window applies it on open (after every box `open()` can raise), on a combo selection and
       on return from Settings, each time after the prefill, and in `finished()` for `STOPPED`;
       `startConnect`'s validation moves and the `RETRY_LOGIN` branch are untouched
-- [ ] unit test in `DisplayFormatTest` pins the three outcomes, the ordering (a blank server wins
+- [x] unit test in `DisplayFormatTest` pins the three outcomes, the ordering (a blank server wins
       over a present login) and blank-as-empty, in the file's style: no inline prose, reasons in
       assertion messages
-- [ ] `mvn test` passes
-- [ ] `mvn package` succeeds, including its six per-variant `-version` runs
-- [ ] manual run on macOS covers the cases below; a result worse than the accepted cost goes back
+- [x] `mvn test` passes
+- [x] `mvn package` succeeds, including its six per-variant `-version` runs
+- [x] manual run on macOS covers the cases below; a result worse than the accepted cost goes back
       to Alex before anything is recorded
-- [ ] `CLAUDE.md` records the rule and its accepted cost as the run showed them, and argues
+  - ⚠️ run by Alex on 2026-10-06 and reported as "tested, works fine", with no per-case notes; the
+    "note whether" cases are therefore recorded in `CLAUDE.md` as read from SWT source, not as seen
+- [x] `CLAUDE.md` records the rule and its accepted cost as the run showed them, and argues
       `NO_GRACE_LOGINS` from the administrator reset rather than from which outcome focuses Password
-- [ ] move this plan to `docs/plans/completed/`
+- [x] move this plan to `docs/plans/completed/`
 
 ### Manual run cases
 
@@ -204,3 +206,9 @@ keyboard cost Alex accepted is the policy, not a licence to leave a real race in
 
 **Manual run on GTK and Windows**, where reachable, with the same cases: the selection paths differ
 per toolkit, and the win32 ones were read from source only.
+
+## Tandem
+
+| Task | Writer | Reviewer |
+|------|--------|----------|
+| 1    | claude | codex    |

@@ -1,0 +1,33 @@
+// Source template for the fake nxmc build used by AppRunnerTest: it records the arguments it was
+// launched with, optionally writes to stderr, and either exits with a code or stays alive.
+// Placeholders are substituted by the test before compilation.
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Arrays;
+
+public class FakeNxmc {
+    public static void main(String[] args) throws Exception {
+        Files.write(Path.of("__ARGS_FILE__"), Arrays.asList(args));
+
+        String stderr = "__STDERR__";
+        if (!stderr.isEmpty()) {
+            System.err.println(stderr);
+            System.err.flush();
+        }
+
+        // a build that does not understand the launcher's options complains about them by name,
+        // which is how the hand-off token can end up in text shown to the user
+        if (__ECHO_ARGS__) {
+            System.err.println("Unknown options: " + String.join(" ", args));
+            System.err.flush();
+        }
+
+        int exitCode = __EXIT_CODE__;
+        if (exitCode != 0) {
+            System.exit(exitCode);
+        }
+
+        Thread.sleep(__SLEEP_MS__);
+    }
+}

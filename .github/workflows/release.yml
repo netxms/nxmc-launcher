@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Check tag matches project version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          POM_VERSION=$(mvn -B -q help:evaluate -Dexpression=project.version -DforceStdout)
+          if [ "$VERSION" != "$POM_VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match pom.xml version $POM_VERSION"
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: mvn -B verify
+
+      - name: Check launcher reports tag version
+        run: |
+          REPORTED=$(java -jar "target/nxmc-launcher-$VERSION-standalone.jar" -version)
+          if [ "$REPORTED" != "nxmc-launcher $VERSION" ]; then
+            echo "::error::Launcher reports '$REPORTED', expected 'nxmc-launcher $VERSION'"
+            exit 1
+          fi
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          JAR="nxmc-launcher-$VERSION-standalone.jar"
+          cd target
+          sha256sum "$JAR" > "$JAR.sha256"
+          PRERELEASE=""
+          case "$VERSION" in *-*) PRERELEASE="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" "$JAR" "$JAR.sha256" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "nxmc-launcher $VERSION" \
+            --generate-notes \
+            $PRERELEASE
